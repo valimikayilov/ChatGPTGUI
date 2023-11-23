@@ -5,7 +5,12 @@ import uuid
 app = Flask(__name__)
 
 # Set your OpenAI API key
-openai.api_key = ''
+def get_api_key(file_path):
+    with open(file_path, 'r') as file:
+        return file.read().strip()
+
+# Set your OpenAI API key
+openai.api_key = get_api_key('API_KEY')
 
 # In-memory storage for conversation states
 conversations = {}
