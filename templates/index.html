@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ChatGPT Web App</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        #chat-container { width: 70%; margin: auto; border: 1px solid #ddd; padding: 20px; }
+        #chat { height: 400px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; }
+        .user-message { text-align: right; color: blue; }
+        .assistant-message { text-align: left; color: green; }
+        textarea { width: 100%; }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <div id="chat"></div>
+        <textarea id="user_input" rows="4" placeholder="Type your message here..."></textarea><br>
+        <button onclick="sendInput()">Send</button>
+    </div>
+
+    <script>
+        var sessionId = '{{ session_id }}';
+
+        function sendInput() {
+    var userInput = $('#user_input').val().trim();
+    if (!userInput) return;
+    $('#user_input').val('');
+    appendMessage('user', userInput);
+
+    $.ajax({
+        url: '/get_response',
+        type: 'POST',
+        contentType: 'application/json',  // Specify the content type
+        data: JSON.stringify({ user_input: userInput, session_id: sessionId }),
+        success: function(data) {
+            appendMessage('assistant', data.response);
+            scrollChatToBottom();
+        }
+    });
+}
+
+
+        function appendMessage(sender, message) {
+            var messageClass = sender === 'user' ? 'user-message' : 'assistant-message';
+            $('#chat').append('<div class="' + messageClass + '"><p>' + message + '</p></div>');
+        }
+
+        function scrollChatToBottom() {
+            var chat = document.getElementById('chat');
+            chat.scrollTop = chat.scrollHeight;
+        }
+    </script>
+</body>
+</html>
