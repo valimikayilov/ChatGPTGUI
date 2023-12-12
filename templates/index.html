@@ -1,55 +1,167 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>ChatGPT Web App</title>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Interface</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <style>
-        body { font-family: Arial, sans-serif; }
-        #chat-container { width: 90%; margin: auto; border: 1px solid #ddd; padding: 20px; }
-        #chat { height: 800px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; }
-        .user-message { text-align: right; color: blue; }
-        .assistant-message { text-align: left; color: green; }
-        textarea { width: 100%; }
-    </style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #f2f7f8;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh; /* Set minimum height to cover the viewport */
+        }
+    
+        #chat-container {
+            width: 100%; /* Make the chat container full width */
+            height: 100vh; /* Make the chat container full height */
+            max-width: 400px;
+            background-color: #fff;
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+    
+        #chat {
+            flex-grow: 1;
+            max-height: 100%; /* Make the chat take up the full height */
+            overflow-y: auto;
+            background-color: #ffffff;
+            padding: 20px;
+        }
+    
+        .message {
+            margin-bottom: 16px;
+            padding: 12px;
+            border-radius: 20px;
+            width: fit-content;
+            animation: fadein 0.5s;
+        }
+    
+        .user-message {
+            background-color: #4e8cff;
+            color: white;
+            margin-left: auto;
+            margin-right: 10px;
+        }
+    
+        .assistant-message {
+            background-color: #e5e5ea;
+            color: black;
+            margin-left: 10px;
+        }
+    
+        textarea {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 0;
+            resize: none;
+            width: calc(100% - 20px);
+            box-sizing: border-box;
+            border-bottom-left-radius: 8px;
+            border-top: none;
+        }
+    
+        .btn-send {
+            padding: 10px;
+            background-color: #00C853;
+            color: white;
+            border: none;
+            border-bottom-right-radius: 8px;
+            cursor: pointer;
+        }
+    
+        pre {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            word-break: keep-all;
+            margin-top: 0;
+        }
+    
+        @keyframes fadein {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>    
 </head>
 <body>
-    <div id="chat-container">
+    <div id="chat-container" class="shadow-sm">
         <div id="chat"></div>
-        <textarea id="user_input" rows="4" placeholder="Type your message here..."></textarea><br>
-        <button onclick="sendInput()">Send</button>
+        <textarea id="user_input" class="form-control" rows="3" placeholder="Type your message here..."></textarea>
+        <button class="btn-send" onclick="sendInput()">Send</button>
     </div>
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         var sessionId = '{{ session_id }}';
 
         function sendInput() {
-    var userInput = $('#user_input').val().trim();
-    if (!userInput) return;
-    $('#user_input').val('');
-    appendMessage('user', userInput);
+            var userInput = $('#user_input').val().trim();
+            if (!userInput) return;
+            $('#user_input').val('');
+            appendMessage('user', userInput);
 
-    $.ajax({
-        url: '/get_response',
-        type: 'POST',
-        contentType: 'application/json',  // Specify the content type
-        data: JSON.stringify({ user_input: userInput, session_id: sessionId }),
-        success: function(data) {
-            appendMessage('assistant', data.response);
-            scrollChatToBottom();
+            // Send user input to the server
+            $.ajax({
+                url: '/get_response',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ user_input: userInput, session_id: sessionId }),
+                success: function(data) {
+                    // Handle the actual server response
+                    if (data.error) {
+                        appendMessage('assistant', 'Error: ' + data.error);
+                    } else {
+                        appendMessage('assistant', data.response);
+                    }
+                    scrollChatToBottom();
+                },
+                error: function() {
+                    appendMessage('assistant', 'Error: Unable to connect to the server.');
+                    scrollChatToBottom();
+                }
+            });
         }
-    });
-}
-
 
         function appendMessage(sender, message) {
+            var formattedMessage = formatCodeBlock(message);
             var messageClass = sender === 'user' ? 'user-message' : 'assistant-message';
-            $('#chat').append('<div class="' + messageClass + '"><p>' + message + '</p></div>');
+            $('#chat').append(`<div class="message ${messageClass}">${formattedMessage}</div>`);
+            scrollChatToBottom();
+        }
+
+        function formatCodeBlock(message) {
+            if (message.startsWith("```") && message.endsWith("```")) {
+                message = message.substring(3, message.length - 3);
+                return '<pre>' + $('<div/>').text(message).html() + '</pre>';
+            } else {
+                return '<p>' + $('<div/>').text(message).html() + '</p>';
+            }
         }
 
         function scrollChatToBottom() {
-            var chat = document.getElementById('chat');
-            chat.scrollTop = chat.scrollHeight;
+            $('#chat').scrollTop($('#chat')[0].scrollHeight);
         }
+
+        $('#user_input').keypress(function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendInput();
+            }
+        });
+
+        $(window).on('load', function() {
+            $('#user_input').focus();
+        });
     </script>
 </body>
 </html>

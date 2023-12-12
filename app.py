@@ -4,20 +4,16 @@ import uuid
 
 app = Flask(__name__)
 
-# Set your OpenAI API key
 def get_api_key(file_path):
     with open(file_path, 'r') as file:
         return file.read().strip()
 
-# Set your OpenAI API key
 openai.api_key = get_api_key('API_KEY')
 
-# In-memory storage for conversation states
 conversations = {}
 
 @app.route('/')
 def index():
-    # Generate a unique session ID for each user
     session_id = str(uuid.uuid4())
     return render_template('index.html', session_id=session_id)
 
@@ -29,21 +25,17 @@ def get_response():
 
     if session_id not in conversations:
         conversations[session_id] = []
-
-    # Append user message to the conversation
+        
     conversations[session_id].append({"role": "user", "content": user_input})
 
     try:
-        # Include all messages in the conversation when making the API call
         response = openai.ChatCompletion.create(
-            model="gpt-4-1106-preview",  # or any other model version you're using
+            model="gpt-4-1106-preview",  
             messages=conversations[session_id]
         )
 
-        # Extract GPT response from the API response
         gpt_response = response.choices[0].message['content']
 
-        # Append GPT response to the conversation
         conversations[session_id].append({"role": "assistant", "content": gpt_response})
 
         return jsonify({"response": gpt_response})
