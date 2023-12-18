@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,13 +14,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh; /* Set minimum height to cover the viewport */
+            min-height: 100vh;
         }
-    
+
         #chat-container {
-            width: 100%; /* Make the chat container full width */
-            height: 100vh; /* Make the chat container full height */
-            max-width: 400px;
+            width: 100%;
+            height: 100vh;
             background-color: #fff;
             box-shadow: 0 5px 30px rgba(0, 0, 0, 0.1);
             border-radius: 8px;
@@ -27,15 +27,15 @@
             display: flex;
             flex-direction: column;
         }
-    
+
         #chat {
             flex-grow: 1;
-            max-height: 100%; /* Make the chat take up the full height */
+            max-height: 100%;
             overflow-y: auto;
             background-color: #ffffff;
             padding: 20px;
         }
-    
+
         .message {
             margin-bottom: 16px;
             padding: 12px;
@@ -43,20 +43,20 @@
             width: fit-content;
             animation: fadein 0.5s;
         }
-    
+
         .user-message {
             background-color: #4e8cff;
             color: white;
             margin-left: auto;
             margin-right: 10px;
         }
-    
+
         .assistant-message {
             background-color: #e5e5ea;
             color: black;
             margin-left: 10px;
         }
-    
+
         textarea {
             border: 1px solid #ddd;
             padding: 15px;
@@ -67,7 +67,7 @@
             border-bottom-left-radius: 8px;
             border-top: none;
         }
-    
+
         .btn-send {
             padding: 10px;
             background-color: #00C853;
@@ -76,7 +76,7 @@
             border-bottom-right-radius: 8px;
             cursor: pointer;
         }
-    
+
         pre {
             background-color: #f5f5f5;
             border: 1px solid #ddd;
@@ -86,13 +86,19 @@
             word-break: keep-all;
             margin-top: 0;
         }
-    
+
         @keyframes fadein {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
-    </style>    
+    </style>
 </head>
+
 <body>
     <div id="chat-container" class="shadow-sm">
         <div id="chat"></div>
@@ -109,15 +115,17 @@
             if (!userInput) return;
             $('#user_input').val('');
             appendMessage('user', userInput);
+            saveChat();
 
-            // Send user input to the server
             $.ajax({
                 url: '/get_response',
                 type: 'POST',
                 contentType: 'application/json',
-                data: JSON.stringify({ user_input: userInput, session_id: sessionId }),
+                data: JSON.stringify({
+                    user_input: userInput,
+                    session_id: sessionId
+                }),
                 success: function(data) {
-                    // Handle the actual server response
                     if (data.error) {
                         appendMessage('assistant', 'Error: ' + data.error);
                     } else {
@@ -136,6 +144,19 @@
             var formattedMessage = formatCodeBlock(message);
             var messageClass = sender === 'user' ? 'user-message' : 'assistant-message';
             $('#chat').append(`<div class="message ${messageClass}">${formattedMessage}</div>`);
+            saveChat();
+            scrollChatToBottom();
+        }
+        function saveChat() {
+        var chatHistory = $('#chat').html();
+        localStorage.setItem('chatHistory', chatHistory);
+    }
+
+        function loadChat() {
+            var chatHistory = localStorage.getItem('chatHistory');
+            if (chatHistory) {
+                $('#chat').html(chatHistory);
+            }
             scrollChatToBottom();
         }
 
@@ -161,7 +182,9 @@
 
         $(window).on('load', function() {
             $('#user_input').focus();
+            loadChat();
         });
     </script>
 </body>
+
 </html>
