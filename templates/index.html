@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Interface</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> 
     <style>
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -59,10 +60,10 @@
 
         textarea {
             border: 1px solid #ddd;
-            padding: 15px;
+            padding: 30px;
             margin: 0;
             resize: none;
-            width: calc(100% - 20px);
+            width: calc(100% - 70px);
             box-sizing: border-box;
             border-bottom-left-radius: 8px;
             border-top: none;
@@ -107,6 +108,8 @@
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script>
+
     <script>
         var sessionId = '{{ session_id }}';
 
@@ -141,16 +144,93 @@
         }
 
         function appendMessage(sender, message) {
-            var formattedMessage = formatCodeBlock(message);
-            var messageClass = sender === 'user' ? 'user-message' : 'assistant-message';
-            $('#chat').append(`<div class="message ${messageClass}">${formattedMessage}</div>`);
-            saveChat();
-            scrollChatToBottom();
-        }
+        var formattedMessage = formatMessage(message);
+        var messageClass = sender === 'user' ? 'user-message' : 'assistant-message';
+        $('#chat').append(`<div class="message ${messageClass}">${formattedMessage}</div>`);
+        // Call PR.prettyPrint after appending a new message containing `prettyprint` to format it
+        PR.prettyPrint();
+        saveChat();
+        scrollChatToBottom();
+    }
         function saveChat() {
         var chatHistory = $('#chat').html();
         localStorage.setItem('chatHistory', chatHistory);
     }
+    function formatMessage(message) {
+        // Function to escape HTML characters
+        function escapeHtml(html) {
+            const htmlEntities = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+            };
+            return html.replace(/[&<>"']/g, (match) => htmlEntities[match]);
+        }
+
+        // Function to format a code block
+        function formatCodeBlock(blockContent) {
+            const codeContent = blockContent.trim().substring(3, blockContent.length - 3).trim();
+            return `<pre class="prettyprint"><code>${escapeHtml(codeContent)}</code></pre>`;
+        }
+
+        // Function to format inline code
+        function formatInlineCode(codeContent) {
+            return `<code>${escapeHtml(codeContent)}</code>`;
+        }
+
+        // Function to convert URLs to anchor tags
+        function linkify(text) {
+            const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#/%=~_|$?!:,().]*[-A-Z0-9+&@#/%=~_|$])/ig;
+            return text.replace(urlRegex, (url) => `<a href="${url}">${url}</a>`);
+        }
+
+        // Trim the entire message
+        message = message.trim();
+
+        // Regular expression to match code blocks
+        const codeBlockPattern = /```([\s\S]*?)```/g;
+
+        // Find all standalone code blocks
+        let codeBlocks = message.match(codeBlockPattern);
+
+        // Remove standalone code blocks from the message
+        message = message.replace(codeBlockPattern, '');
+
+        // Split the message into parts by inline code backticks
+        let parts = message.split(/(`)/);
+
+        // Flag to toggle whether we are inside an inline code snippet
+        let inInlineCode = false;
+
+        // Process each part to generate formatted message
+        let formattedMessage = parts.map((part) => {
+            // Toggle the inline code flag
+            if (part === '`') {
+            inInlineCode = !inInlineCode;
+            return '';
+            }
+            // Format inline code or text
+            return inInlineCode ? formatInlineCode(part) : linkify(escapeHtml(part));
+        }).join('');
+
+        // Deal with the standalone code blocks
+        if (codeBlocks) {
+            codeBlocks.forEach((codeBlock) => {
+            formattedMessage += formatCodeBlock(codeBlock) + '\n';
+            });
+        }
+
+        // Wrap lines that are not in a code block with paragraph tags
+        let finalResult = '';
+        formattedMessage.split('\n').forEach((line) => {
+            finalResult += line.startsWith('<pre') ? line : `<p>${line}</p>`;
+        });
+
+        return finalResult;
+        }
+
 
         function loadChat() {
             var chatHistory = localStorage.getItem('chatHistory');
@@ -158,15 +238,6 @@
                 $('#chat').html(chatHistory);
             }
             scrollChatToBottom();
-        }
-
-        function formatCodeBlock(message) {
-            if (message.startsWith("```") && message.endsWith("```")) {
-                message = message.substring(3, message.length - 3);
-                return '<pre>' + $('<div/>').text(message).html() + '</pre>';
-            } else {
-                return '<p>' + $('<div/>').text(message).html() + '</p>';
-            }
         }
 
         function scrollChatToBottom() {
